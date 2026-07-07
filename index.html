@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<title>오늘의 영단어</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    background: #f5f4f0;
+    color: #1a1a18;
+    min-height: 100vh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 24px 20px 40px; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .count { font-size: 13px; color: #6b6a64; }
+  .sync-status { font-size: 11px; color: #9a988f; margin-top: 2px; }
+  button {
+    font-family: inherit; font-size: 14px; background: #fff;
+    border: 1px solid #d8d6cd; border-radius: 8px; padding: 8px 14px;
+    cursor: pointer; color: #1a1a18;
+  }
+  button:active { background: #ececE6; }
+  .primary {
+    background: #1a1a18; color: #fff; border: none;
+    width: 100%; padding: 14px; font-size: 15px;
+    border-radius: 10px; margin-top: 12px;
+  }
+  .secondary {
+    background: #fff; color: #1a1a18; border: 1px solid #d8d6cd;
+    width: 100%; padding: 12px; font-size: 14px;
+    border-radius: 10px; margin-top: 8px;
+  }
+  .card {
+    background: #fff; border: 1px solid #e3e1d8; border-radius: 16px;
+    padding: 40px 20px; min-height: 220px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; cursor: pointer; user-select: none;
+  }
+  .word { font-size: 26px; font-weight: 600; margin: 0 0 10px; }
+  .meaning { font-size: 16px; color: #4f4e48; margin: 0; display: none; line-height: 1.5; }
+  .hint { font-size: 12px; color: #9a988f; margin-top: 16px; }
+  .view { display: none; }
+  .view.active { display: block; }
+  textarea, input[type=text] {
+    width: 100%; font-family: inherit; font-size: 14px;
+    padding: 10px; border-radius: 8px;
+    border: 1px solid #d8d6cd; background: #fff;
+    color: #1a1a18; margin-bottom: 8px;
+  }
+  textarea { resize: vertical; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tabs button { flex: 1; }
+  .tabs button.active { background: #1a1a18; color: #fff; border-color: #1a1a18; }
+  .list-row {
+    display: flex; justify-content: space-between; align-items: center;
+    border: 1px solid #e3e1d8; border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 6px; background: #fff;
+  }
+  .list-row .w { font-weight: 600; font-size: 14px; }
+  .list-row .m { font-size: 13px; color: #6b6a64; margin-left: 8px; }
+  .list-row .src { font-size: 10px; color: #b0ae a7; margin-left: 4px; }
+  .list-row .del { border: none; background: none; color: #b94a3a; font-size: 13px; padding: 4px 8px; }
+  .result { font-size: 12px; color: #6b6a64; margin: 4px 0 14px; }
+  h2 { font-size: 16px; margin: 0 0 14px; }
+  .loading { text-align: center; padding: 40px 0; color: #9a988f; font-size: 14px; }
+  .info-box {
+    background: #f0f0ea; border-radius: 8px;
+    padding: 10px 12px; font-size: 12px;
+    color: #6b6a64; margin-bottom: 14px; line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="quizView" class="view active">
+    <div class="topbar">
+      <div>
+        <div class="count" id="countLabel">단어 불러오는 중...</div>
+        <div class="sync-status" id="syncStatus"></div>
+      </div>
+      <button id="manageBtn">단어 관리</button>
+    </div>
+    <div class="card" id="card">
+      <p class="word" id="cardWord">...</p>
+      <p class="meaning" id="cardMeaning"></p>
+      <p class="hint" id="cardHint">불러오는 중</p>
+    </div>
+    <button class="primary" id="nextBtn">다음 단어</button>
+    <button class="secondary" id="syncBtn">🔄 구글 시트에서 새로고침</button>
+  </div>
+
+  <div id="manageView" class="view">
+    <div class="topbar">
+      <h2>단어 관리</h2>
+      <button id="backBtn">퀴즈로</button>
+    </div>
+    <div class="info-box">
+      📋 구글 시트에서 단어를 추가하면 퀴즈 화면의 <b>"구글 시트에서 새로고침"</b> 버튼을 눌러 반영하세요.<br>
+      폰에서 직접 추가한 단어는 이 앱에만 저장됩니다.
+    </div>
+    <div class="tabs">
+      <button id="tabSingle" class="active">한 개씩 추가</button>
+      <button id="tabBulk">한꺼번에 추가</button>
+    </div>
+    <div id="singleAdd">
+      <input id="wordInput" type="text" placeholder="단어 (예: abandon)" />
+      <input id="meaningInput" type="text" placeholder="뜻 (예: 버리다, 포기하다)" />
+      <button class="primary" id="addBtn">추가</button>
+    </div>
+    <div id="bulkAdd" style="display:none;">
+      <p class="hint" style="margin:0 0 6px;">한 줄에 "단어 : 뜻" 형식으로 붙여넣으세요.</p>
+      <textarea id="bulkInput" rows="6" placeholder="abandon : 버리다, 포기하다"></textarea>
+      <button class="primary" id="bulkAddBtn">일괄 추가</button>
+      <p class="result" id="bulkResult"></p>
+    </div>
+    <div id="wordList" style="margin-top:18px;"></div>
+  </div>
+
+</div>
+
+<script>
+var SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSE__0bUpaRs8kyyHFbhV8DI-oANK6QLHh9ozWcFLXyfNl6OiMxdfzKe5ByH4KTjPj7sRoieTw8Ur2K/pub?gid=0&single=true&output=csv';
+var LOCAL_KEY = 'wordquiz-local-v1';
+var SHEET_KEY = 'wordquiz-sheet-v1';
+var SHEET_TS_KEY = 'wordquiz-sheet-ts';
+
+var sheetWords = [];
+var localWords = [];
+var allWords = [];
+var revealed = false;
+
+function loadLocal() {
+  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveLocal() {
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(localWords));
+}
+function loadCachedSheet() {
+  try { return JSON.parse(localStorage.getItem(SHEET_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveCachedSheet(words) {
+  localStorage.setItem(SHEET_KEY, JSON.stringify(words));
+  localStorage.setItem(SHEET_TS_KEY, Date.now().toString());
+}
+
+function mergeWords() {
+  allWords = sheetWords.concat(localWords);
+}
+
+function parseCSV(text) {
+  var lines = text.trim().split('\n');
+  var result = [];
+  for (var i = 1; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (!line) continue;
+    // CSV 파싱 (쉼표 구분, 따옴표 처리)
+    var parts;
+    if (line.startsWith('"')) {
+      var match = line.match(/^"((?:[^"]|"")*)","?(.*)"?$/);
+      if (match) {
+        parts = [match[1].replace(/""/g, '"'), match[2].replace(/^"|"$/g, '')];
+      } else {
+        parts = line.split(',');
+      }
+    } else {
+      var idx = line.indexOf(',');
+      if (idx === -1) continue;
+      parts = [line.slice(0, idx), line.slice(idx + 1)];
+    }
+    var w = parts[0].trim();
+    var m = parts[1] ? parts[1].trim() : '';
+    if (w && m) result.push({ word: w, meaning: m, fromSheet: true });
+  }
+  return result;
+}
+
+function fetchSheet(callback) {
+  document.getElementById('syncStatus').textContent = '구글 시트 동기화 중...';
+  fetch(SHEET_CSV_URL)
+    .then(function(r) {
+      if (!r.ok) throw new Error('fetch failed');
+      return r.text();
+    })
+    .then(function(text) {
+      var parsed = parseCSV(text);
+      if (parsed.length > 0) {
+        sheetWords = parsed;
+        saveCachedSheet(sheetWords);
+        mergeWords();
+        renderCount();
+        renderList();
+        var now = new Date().toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'});
+        document.getElementById('syncStatus').textContent = '✓ 시트 동기화 완료 ' + now;
+        if (callback) callback();
+      } else {
+        document.getElementById('syncStatus').textContent = '⚠️ 시트에서 단어를 찾지 못했어요';
+      }
+    })
+    .catch(function() {
+      document.getElementById('syncStatus').textContent = '⚠️ 오프라인 - 캐시된 단어 사용 중';
+      if (callback) callback();
+    });
+}
+
+function init() {
+  localWords = loadLocal();
+  sheetWords = loadCachedSheet();
+  mergeWords();
+  renderCount();
+  renderList();
+  pickRandom();
+  fetchSheet(null);
+}
+
+function renderCount() {
+  document.getElementById('countLabel').textContent =
+    '총 ' + allWords.length + '개 (시트 ' + sheetWords.length + ' + 직접 ' + localWords.length + ')';
+}
+
+function pickRandom() {
+  revealed = false;
+  var meaningEl = document.getElementById('cardMeaning');
+  var hintEl = document.getElementById('cardHint');
+  if (allWords.length === 0) {
+    document.getElementById('cardWord').textContent = '단어를 추가해주세요';
+    meaningEl.style.display = 'none';
+    hintEl.textContent = '구글 시트에 단어를 추가하고 새로고침 해보세요';
+    return;
+  }
+  var idx = Math.floor(Math.random() * allWords.length);
+  document.getElementById('cardWord').textContent = allWords[idx].word;
+  meaningEl.textContent = allWords[idx].meaning;
+  meaningEl.style.display = 'none';
+  hintEl.textContent = '탭해서 뜻 보기';
+}
+
+function toggleReveal() {
+  if (allWords.length === 0) return;
+  revealed = !revealed;
+  document.getElementById('cardMeaning').style.display = revealed ? 'block' : 'none';
+  document.getElementById('cardHint').textContent = revealed ? '탭하면 다시 가려져요' : '탭해서 뜻 보기';
+}
+
+function escapeHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function renderList() {
+  var list = document.getElementById('wordList');
+  list.innerHTML = '';
+
+  // 로컬 단어 먼저 (최신순)
+  if (localWords.length > 0) {
+    var h = document.createElement('p');
+    h.style.cssText = 'font-size:12px;color:#9a988f;margin:0 0 6px;';
+    h.textContent = '📱 직접 추가한 단어 (' + localWords.length + '개)';
+    list.appendChild(h);
+    localWords.slice().reverse().forEach(function(w, ri) {
+      var idx = localWords.length - 1 - ri;
+      var row = document.createElement('div');
+      row.className = 'list-row';
+      var textDiv = document.createElement('div');
+      textDiv.innerHTML = '<span class="w">' + escapeHtml(w.word) + '</span><span class="m">' + escapeHtml(w.meaning) + '</span>';
+      var delBtn = document.createElement('button');
+      delBtn.className = 'del';
+      delBtn.textContent = '삭제';
+      delBtn.addEventListener('click', (function(i){ return function() {
+        localWords.splice(i, 1);
+        saveLocal();
+        mergeWords();
+        renderCount();
+        renderList();
+        pickRandom();
+      }; })(idx));
+      row.appendChild(textDiv);
+      row.appendChild(delBtn);
+      list.appendChild(row);
+    });
+  }
+
+  // 시트 단어
+  if (sheetWords.length > 0) {
+    var h2 = document.createElement('p');
+    h2.style.cssText = 'font-size:12px;color:#9a988f;margin:12px 0 6px;';
+    h2.textContent = '📋 구글 시트 단어 (' + sheetWords.length + '개)';
+    list.appendChild(h2);
+    sheetWords.slice(0, 20).forEach(function(w) {
+      var row = document.createElement('div');
+      row.className = 'list-row';
+      row.innerHTML = '<div><span class="w">' + escapeHtml(w.word) + '</span><span class="m">' + escapeHtml(w.meaning) + '</span></div>';
+      list.appendChild(row);
+    });
+    if (sheetWords.length > 20) {
+      var more = document.createElement('p');
+      more.style.cssText = 'font-size:12px;color:#9a988f;text-align:center;padding:8px 0;';
+      more.textContent = '... 외 ' + (sheetWords.length - 20) + '개';
+      list.appendChild(more);
+    }
+  }
+
+  if (allWords.length === 0) {
+    list.innerHTML = '<p style="font-size:13px;color:#9a988f;text-align:center;padding:1rem 0;">단어가 없어요.</p>';
+  }
+}
+
+document.getElementById('card').addEventListener('click', toggleReveal);
+document.getElementById('nextBtn').addEventListener('click', pickRandom);
+document.getElementById('syncBtn').addEventListener('click', function() {
+  fetchSheet(pickRandom);
+});
+
+document.getElementById('manageBtn').addEventListener('click', function() {
+  document.getElementById('quizView').classList.remove('active');
+  document.getElementById('manageView').classList.add('active');
+});
+document.getElementById('backBtn').addEventListener('click', function() {
+  document.getElementById('manageView').classList.remove('active');
+  document.getElementById('quizView').classList.add('active');
+  pickRandom();
+});
+
+document.getElementById('tabSingle').addEventListener('click', function() {
+  document.getElementById('singleAdd').style.display = 'block';
+  document.getElementById('bulkAdd').style.display = 'none';
+  this.classList.add('active');
+  document.getElementById('tabBulk').classList.remove('active');
+});
+document.getElementById('tabBulk').addEventListener('click', function() {
+  document.getElementById('singleAdd').style.display = 'none';
+  document.getElementById('bulkAdd').style.display = 'block';
+  this.classList.add('active');
+  document.getElementById('tabSingle').classList.remove('active');
+});
+
+document.getElementById('addBtn').addEventListener('click', function() {
+  var wEl = document.getElementById('wordInput');
+  var mEl = document.getElementById('meaningInput');
+  var w = wEl.value.trim();
+  var m = mEl.value.trim();
+  if (!w || !m) return;
+  localWords.push({ word: w, meaning: m });
+  saveLocal();
+  mergeWords();
+  wEl.value = ''; mEl.value = '';
+  renderCount(); renderList();
+});
+
+document.getElementById('bulkAddBtn').addEventListener('click', function() {
+  var textEl = document.getElementById('bulkInput');
+  var lines = textEl.value.split('\n').map(function(l){ return l.trim(); }).filter(function(l){ return l; });
+  var added = 0, skipped = 0;
+  lines.forEach(function(line) {
+    var sepIdx = line.indexOf(':') !== -1 ? line.indexOf(':') : (line.indexOf('-') !== -1 ? line.indexOf('-') : -1);
+    if (sepIdx === -1) { skipped++; return; }
+    var w = line.slice(0, sepIdx).trim();
+    var m = line.slice(sepIdx + 1).trim();
+    if (!w || !m) { skipped++; return; }
+    localWords.push({ word: w, meaning: m });
+    added++;
+  });
+  saveLocal();
+  mergeWords();
+  textEl.value = '';
+  renderCount(); renderList();
+  document.getElementById('bulkResult').textContent = added + '개 추가됨' + (skipped > 0 ? ', ' + skipped + '개 건너뜀' : '');
+});
+
+init();
+</script>
+</body>
+</html>
