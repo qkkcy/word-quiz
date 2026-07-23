@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<title>오늘의 영단어</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif; background:#f5f4f0; color:#1a1a18; min-height:100vh; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .wrap { max-width:480px; margin:0 auto; padding:20px 20px 40px; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .count { font-size:13px; color:#6b6a64; }
+  .sync-status { font-size:11px; color:#9a988f; margin-top:2px; }
+  button { font-family:inherit; font-size:14px; background:#fff; border:1px solid #d8d6cd; border-radius:8px; padding:8px 14px; cursor:pointer; color:#1a1a18; }
+  button:active { opacity:0.7; }
+  .primary { background:#1a1a18; color:#fff; border:none; width:100%; padding:14px; font-size:15px; border-radius:10px; margin-top:10px; }
+  .secondary { background:#fff; color:#1a1a18; border:1px solid #d8d6cd; width:100%; padding:12px; font-size:14px; border-radius:10px; margin-top:8px; }
+
+  .progress-wrap { margin-bottom:12px; }
+  .progress-bar { height:4px; background:#e3e1d8; border-radius:2px; overflow:hidden; }
+  .progress-fill { height:100%; background:#1a1a18; border-radius:2px; transition:width 0.3s; }
+  .progress-label { display:flex; justify-content:space-between; font-size:11px; color:#9a988f; margin-top:4px; }
+
+  /* X 뱃지 */
+  .x-badge { display:inline-block; background:#fff0f0; border:1px solid #e07070; color:#9a2a2a; border-radius:6px; font-size:11px; padding:2px 7px; margin-left:6px; vertical-align:middle; }
+
+  .card { background:#fff; border:1px solid #e3e1d8; border-radius:16px; padding:32px 24px 24px; min-height:220px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; cursor:pointer; user-select:none; }
+  .card:active { background:#f9f8f4; }
+  .card-word { font-size:28px; font-weight:600; margin:0 0 4px; }
+  .card-pron { font-size:15px; color:#7a8a6a; margin:0 0 12px; font-style:italic; display:none; }
+  .card-example { font-size:14px; color:#4f4e48; margin:0; line-height:1.6; display:none; background:#f5f4f0; border-radius:8px; padding:10px 12px; width:100%; text-align:left; }
+  .card-divider { width:40px; height:1px; background:#e3e1d8; margin:14px auto; display:none; }
+  .card-meaning { font-size:18px; color:#1a1a18; margin:0; font-weight:500; display:none; line-height:1.5; }
+  .card-hint { font-size:12px; color:#9a988f; margin-top:16px; }
+  .steps { display:flex; gap:6px; margin-top:12px; justify-content:center; }
+  .step-dot { width:6px; height:6px; border-radius:50%; background:#d8d6cd; transition:background 0.2s; }
+  .step-dot.active { background:#1a1a18; }
+
+  .ox-row { display:flex; gap:10px; margin-top:12px; }
+  .btn-o { flex:1; padding:14px; font-size:22px; border-radius:12px; background:#f0faf0; border:1.5px solid #7bc47b; color:#2a7a2a; }
+  .btn-x { flex:1; padding:14px; font-size:22px; border-radius:12px; background:#fff5f5; border:1.5px solid #e07070; color:#9a2a2a; }
+  .btn-o:active { background:#d8f5d8; }
+  .btn-x:active { background:#fde8e8; }
+  .ox-label { display:flex; justify-content:space-between; font-size:11px; color:#9a988f; margin-top:4px; padding:0 4px; }
+
+  .done-card { background:#fff; border:1px solid #e3e1d8; border-radius:16px; padding:40px 24px; text-align:center; }
+  .done-card h3 { font-size:22px; margin:0 0 8px; }
+  .done-card p { font-size:14px; color:#6b6a64; margin:0 0 20px; }
+
+  .view { display:none; }
+  .view.active { display:block; }
+  textarea, input[type=text] { width:100%; font-family:inherit; font-size:14px; padding:10px; border-radius:8px; border:1px solid #d8d6cd; background:#fff; color:#1a1a18; margin-bottom:8px; }
+  textarea { resize:vertical; }
+  .tabs { display:flex; gap:8px; margin-bottom:14px; }
+  .tabs button { flex:1; }
+  .tabs button.active { background:#1a1a18; color:#fff; border-color:#1a1a18; }
+  .list-row { display:flex; justify-content:space-between; align-items:center; border:1px solid #e3e1d8; border-radius:8px; padding:10px 12px; margin-bottom:6px; background:#fff; }
+  .list-row .w { font-weight:600; font-size:14px; }
+  .list-row .m { font-size:13px; color:#6b6a64; margin-left:6px; }
+  .list-row .del { border:none; background:none; color:#b94a3a; font-size:13px; padding:4px 8px; flex-shrink:0; }
+  .result { font-size:12px; color:#6b6a64; margin:4px 0 14px; }
+  h2 { font-size:16px; margin:0 0 14px; }
+  .info-box { background:#f0f0ea; border-radius:8px; padding:10px 12px; font-size:12px; color:#6b6a64; margin-bottom:14px; line-height:1.6; }
+  .section-label { font-size:12px; color:#9a988f; margin:12px 0 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="quizView" class="view active">
+    <div class="topbar">
+      <div>
+        <div class="count" id="countLabel">불러오는 중...</div>
+        <div class="sync-status" id="syncStatus"></div>
+      </div>
+      <button id="manageBtn">단어 관리</button>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div class="progress-label">
+        <span id="progressLeft">남은 단어 0개</span>
+        <span id="progressRight">✓ 0개</span>
+      </div>
+    </div>
+
+    <div id="cardWrap">
+      <div class="card" id="card">
+        <p class="card-word" id="cardWord">...</p>
+        <p class="card-pron" id="cardPron"></p>
+        <div class="card-example" id="cardExample"></div>
+        <div class="card-divider" id="cardDivider"></div>
+        <p class="card-meaning" id="cardMeaning"></p>
+        <p class="card-hint" id="cardHint">탭해서 발음 · 예시 보기</p>
+        <div class="steps">
+          <div class="step-dot active" id="dot0"></div>
+          <div class="step-dot" id="dot1"></div>
+          <div class="step-dot" id="dot2"></div>
+        </div>
+      </div>
+      <div class="ox-row" id="oxRow" style="display:none;">
+        <button class="btn-x" id="btnX">✕</button>
+        <button class="btn-o" id="btnO">○</button>
+      </div>
+      <div class="ox-label" id="oxLabel" style="display:none;">
+        <span>다시 볼게요</span>
+        <span>외웠어요</span>
+      </div>
+    </div>
+
+    <div id="doneCard" class="done-card" style="display:none;">
+      <h3>🎉 전부 완료!</h3>
+      <p id="doneMsg"></p>
+      <button class="primary" id="restartBtn">처음부터 다시</button>
+      <button class="secondary" id="reviewXBtn" style="display:none;">X 단어만 다시</button>
+    </div>
+
+    <button class="secondary" id="syncBtn" style="margin-top:10px;">🔄 구글 시트에서 새로고침</button>
+  </div>
+
+  <div id="manageView" class="view">
+    <div class="topbar">
+      <h2>단어 관리</h2>
+      <button id="backBtn">퀴즈로</button>
+    </div>
+    <div class="info-box">
+      📋 구글 시트 열 순서: <b>A단어 · B발음기호 · C예시 · D뜻</b><br>
+      발음기호·예시는 비워도 돼요.
+    </div>
+    <div class="tabs">
+      <button id="tabSingle" class="active">한 개씩 추가</button>
+      <button id="tabBulk">한꺼번에 추가</button>
+    </div>
+    <div id="singleAdd">
+      <input id="wordInput" type="text" placeholder="단어 (예: abandon)" />
+      <input id="pronInput" type="text" placeholder="발음기호 — 선택" />
+      <input id="exampleInput" type="text" placeholder="예시 문장 — 선택" />
+      <input id="meaningInput" type="text" placeholder="뜻 (예: 버리다, 포기하다)" />
+      <button class="primary" id="addBtn">추가</button>
+    </div>
+    <div id="bulkAdd" style="display:none;">
+      <p style="font-size:12px;color:#9a988f;margin:0 0 6px;">탭(Tab)으로 구분: 단어[탭]발음기호[탭]예시[탭]뜻</p>
+      <textarea id="bulkInput" rows="6" placeholder="abandon	/əˈbændən/	She abandoned her plan.	버리다, 포기하다"></textarea>
+      <button class="primary" id="bulkAddBtn">일괄 추가</button>
+      <p class="result" id="bulkResult"></p>
+    </div>
+    <div id="wordList" style="margin-top:18px;"></div>
+  </div>
+
+</div>
+<script>
+var SHEET_CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vSE__0bUpaRs8kyyHFbhV8DI-oANK6QLHh9ozWcFLXyfNl6OiMxdfzKe5ByH4KTjPj7sRoieTw8Ur2K/pub?gid=0&single=true&output=csv';
+var LOCAL_KEY='wordquiz-local-v2';
+var SHEET_KEY='wordquiz-sheet-v2';
+var XWORDS_KEY='wordquiz-xwords-v2'; // 영구 저장 X 단어 키(word 문자열 set)
+
+var sheetWords=[], localWords=[], allWords=[];
+var persistentXSet={}; // {word: true} — 접속 간 유지
+
+var queue=[];       // 이번 세션 남은 단어
+var sessionX=[];    // 이번 세션 X된 단어 (세션 내 재출제용)
+var oCount=0;
+var currentWord=null, step=0;
+
+/* ── 스토리지 ── */
+function loadLocal(){try{return JSON.parse(localStorage.getItem(LOCAL_KEY)||'[]');}catch(e){return[];}}
+function saveLocal(){localStorage.setItem(LOCAL_KEY,JSON.stringify(localWords));}
+function loadCachedSheet(){try{return JSON.parse(localStorage.getItem(SHEET_KEY)||'[]');}catch(e){return[];}}
+function saveCachedSheet(w){localStorage.setItem(SHEET_KEY,JSON.stringify(w));}
+function loadXSet(){try{return JSON.parse(localStorage.getItem(XWORDS_KEY)||'{}');}catch(e){return {};}}
+function saveXSet(){localStorage.setItem(XWORDS_KEY,JSON.stringify(persistentXSet));}
+function mergeWords(){allWords=sheetWords.concat(localWords);}
+
+/* ── 유틸 ── */
+function shuffle(arr){
+  var a=arr.slice();
+  for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}
+  return a;
+}
+
+/* ── 세션 시작 ── */
+function startSession(){
+  // X 단어 먼저, 나머지 뒤에 — 둘 다 내부적으로 셔플
+  var xList=[], rest=[];
+  allWords.forEach(function(w){
+    if(persistentXSet[w.word]) xList.push(w);
+    else rest.push(w);
+  });
+  queue=shuffle(xList).concat(shuffle(rest));
+  sessionX=[];
+  oCount=0;
+  document.getElementById('doneCard').style.display='none';
+  document.getElementById('cardWrap').style.display='block';
+  showCard();
+}
+
+/* ── 카드 흐름 ── */
+function showCard(){
+  // 큐 소진 → 세션X 재출제
+  if(queue.length===0 && sessionX.length>0){
+    queue=shuffle(sessionX.slice());
+    sessionX=[];
+  }
+  if(queue.length===0){
+    showDone(); return;
+  }
+  currentWord=queue.shift();
+  step=0;
+  renderCard();
+  updateProgress();
+  document.getElementById('oxRow').style.display='none';
+  document.getElementById('oxLabel').style.display='none';
+}
+
+function showDone(){
+  document.getElementById('cardWrap').style.display='none';
+  document.getElementById('doneCard').style.display='block';
+  var xCount=Object.keys(persistentXSet).length;
+  var msg='총 '+allWords.length+'개 완료!';
+  if(xCount>0) msg+=' (아직 X 단어 '+xCount+'개 남아있어요)';
+  document.getElementById('doneMsg').textContent=msg;
+  var rxBtn=document.getElementById('reviewXBtn');
+  rxBtn.style.display=xCount>0?'block':'none';
+  updateProgress();
+}
+
+function markO(){
+  // 영구 X에서 제거
+  delete persistentXSet[currentWord.word];
+  saveXSet();
+  oCount++;
+  showCard();
+}
+
+function markX(){
+  // 영구 X에 추가
+  persistentXSet[currentWord.word]=true;
+  saveXSet();
+  sessionX.push(currentWord);
+  showCard();
+}
+
+/* ── 카드 렌더 ── */
+function renderCard(){
+  var w=currentWord;
+  var isX=persistentXSet[w.word];
+  var wordEl=document.getElementById('cardWord');
+  wordEl.textContent=w.word;
+
+  // X 뱃지 표시
+  var badge=document.getElementById('xBadge');
+  if(badge) badge.remove();
+  if(isX){
+    var b=document.createElement('span');
+    b.id='xBadge'; b.className='x-badge'; b.textContent='복습';
+    wordEl.appendChild(b);
+  }
+
+  document.getElementById('cardPron').textContent=w.pron||'';
+  document.getElementById('cardPron').style.display='none';
+  document.getElementById('cardExample').textContent=w.example||'';
+  document.getElementById('cardExample').style.display='none';
+  document.getElementById('cardDivider').style.display='none';
+  document.getElementById('cardMeaning').textContent=w.meaning;
+  document.getElementById('cardMeaning').style.display='none';
+  var hasPE=w.pron||w.example;
+  document.getElementById('cardHint').textContent=hasPE?'탭해서 발음 · 예시 보기':'탭해서 뜻 보기';
+  setDots(0);
+}
+
+function tapCard(){
+  if(!currentWord)return;
+  var w=currentWord, hasPE=w.pron||w.example;
+  if(!hasPE){
+    if(step===0){
+      document.getElementById('cardMeaning').style.display='block';
+      document.getElementById('cardDivider').style.display='block';
+      document.getElementById('cardHint').textContent='알면 ○, 모르면 ✕';
+      step=1; setDots(1); showOX();
+    }
+    return;
+  }
+  if(step===0){
+    if(w.pron)document.getElementById('cardPron').style.display='block';
+    if(w.example)document.getElementById('cardExample').style.display='block';
+    document.getElementById('cardHint').textContent='탭해서 뜻 보기';
+    step=1; setDots(1);
+  } else if(step===1){
+    document.getElementById('cardDivider').style.display='block';
+    document.getElementById('cardMeaning').style.display='block';
+    document.getElementById('cardHint').textContent='알면 ○, 모르면 ✕';
+    step=2; setDots(2); showOX();
+  }
+}
+
+function showOX(){
+  document.getElementById('oxRow').style.display='flex';
+  document.getElementById('oxLabel').style.display='flex';
+}
+
+function updateProgress(){
+  var total=allWords.length;
+  if(total===0)return;
+  var pct=Math.round((oCount/total)*100);
+  document.getElementById('progressFill').style.width=pct+'%';
+  var remaining=queue.length+(currentWord?1:0)+sessionX.length;
+  var xCount=Object.keys(persistentXSet).length;
+  document.getElementById('progressLeft').textContent='남은 '+remaining+'개'+(xCount>0?' · X '+xCount+'개':'');
+  document.getElementById('progressRight').textContent='✓ '+oCount+'개';
+}
+
+function setDots(s){for(var i=0;i<3;i++)document.getElementById('dot'+i).className='step-dot'+(i===s?' active':'');}
+
+/* ── CSV ── */
+function parseCSVLine(line){
+  var result=[],cur='',inQ=false;
+  for(var i=0;i<line.length;i++){
+    var c=line[i];
+    if(c==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else{inQ=!inQ;}}
+    else if(c===','&&!inQ){result.push(cur.trim());cur='';}
+    else{cur+=c;}
+  }
+  result.push(cur.trim()); return result;
+}
+function parseCSV(text){
+  var lines=text.trim().split('\n'),result=[];
+  for(var i=1;i<lines.length;i++){
+    var line=lines[i].trim(); if(!line)continue;
+    var cols=parseCSVLine(line);
+    var word=cols[0]||'',pron='',example='',meaning='';
+    if(cols.length>=4){pron=cols[1]||'';example=cols[2]||'';meaning=cols[3]||'';}
+    else{meaning=cols[1]||'';}
+    if(word&&meaning)result.push({word:word,pron:pron,example:example,meaning:meaning,fromSheet:true});
+  }
+  return result;
+}
+function fetchSheet(cb){
+  document.getElementById('syncStatus').textContent='동기화 중...';
+  fetch(SHEET_CSV_URL)
+    .then(function(r){if(!r.ok)throw new Error();return r.text();})
+    .then(function(text){
+      var parsed=parseCSV(text);
+      if(parsed.length>0){
+        sheetWords=parsed;saveCachedSheet(sheetWords);mergeWords();
+        renderCount();renderList();
+        var t=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+        document.getElementById('syncStatus').textContent='✓ 동기화 '+t;
+        if(cb)cb();
+      }else{document.getElementById('syncStatus').textContent='⚠️ 단어를 찾지 못했어요';}
+    })
+    .catch(function(){
+      document.getElementById('syncStatus').textContent='⚠️ 오프라인 - 캐시 사용 중';
+      if(cb)cb();
+    });
+}
+
+/* ── 초기화 ── */
+function init(){
+  localWords=loadLocal();
+  sheetWords=loadCachedSheet();
+  persistentXSet=loadXSet();
+  mergeWords();
+  renderCount();renderList();
+  startSession();
+  fetchSheet(null);
+}
+
+function renderCount(){
+  var xCount=Object.keys(persistentXSet).length;
+  document.getElementById('countLabel').textContent='총 '+allWords.length+'개'+(xCount>0?' · X '+xCount+'개':'');
+}
+
+function escapeHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function renderList(){
+  var list=document.getElementById('wordList');
+  list.innerHTML='';
+  if(localWords.length>0){
+    var h=document.createElement('p');h.className='section-label';h.textContent='📱 직접 추가 ('+localWords.length+'개)';list.appendChild(h);
+    localWords.slice().reverse().forEach(function(w,ri){
+      var idx=localWords.length-1-ri;
+      var row=document.createElement('div');row.className='list-row';
+      var td=document.createElement('div');td.style.flex='1';
+      td.innerHTML='<span class="w">'+escapeHtml(w.word)+'</span>'+(w.pron?'<span style="font-size:12px;color:#7a8a6a;margin-left:6px;">'+escapeHtml(w.pron)+'</span>':'')+'<span class="m">'+escapeHtml(w.meaning)+'</span>';
+      var db=document.createElement('button');db.className='del';db.textContent='삭제';
+      db.addEventListener('click',(function(i){return function(){localWords.splice(i,1);saveLocal();mergeWords();renderCount();renderList();};})(idx));
+      row.appendChild(td);row.appendChild(db);list.appendChild(row);
+    });
+  }
+  if(sheetWords.length>0){
+    var h2=document.createElement('p');h2.className='section-label';h2.style.marginTop='12px';h2.textContent='📋 구글 시트 ('+sheetWords.length+'개)';list.appendChild(h2);
+    sheetWords.slice(0,30).forEach(function(w){
+      var isX=persistentXSet[w.word];
+      var row=document.createElement('div');row.className='list-row';
+      row.innerHTML='<div style="flex:1"><span class="w">'+escapeHtml(w.word)+'</span>'+(isX?'<span class="x-badge">X</span>':'')+(w.pron?'<span style="font-size:12px;color:#7a8a6a;margin-left:6px;">'+escapeHtml(w.pron)+'</span>':'')+'<span class="m">'+escapeHtml(w.meaning)+'</span></div>';
+      list.appendChild(row);
+    });
+    if(sheetWords.length>30){var more=document.createElement('p');more.style.cssText='font-size:12px;color:#9a988f;text-align:center;padding:8px 0;';more.textContent='... 외 '+(sheetWords.length-30)+'개';list.appendChild(more);}
+  }
+  if(allWords.length===0)list.innerHTML='<p style="font-size:13px;color:#9a988f;text-align:center;padding:1rem 0;">단어가 없어요.</p>';
+}
+
+/* ── 이벤트 ── */
+document.getElementById('card').addEventListener('click',tapCard);
+document.getElementById('btnO').addEventListener('click',markO);
+document.getElementById('btnX').addEventListener('click',markX);
+document.getElementById('restartBtn').addEventListener('click',startSession);
+document.getElementById('reviewXBtn').addEventListener('click',function(){
+  var xList=allWords.filter(function(w){return persistentXSet[w.word];});
+  queue=shuffle(xList); sessionX=[]; oCount=0;
+  document.getElementById('doneCard').style.display='none';
+  document.getElementById('cardWrap').style.display='block';
+  showCard();
+});
+document.getElementById('syncBtn').addEventListener('click',function(){fetchSheet(startSession);});
+document.getElementById('manageBtn').addEventListener('click',function(){
+  document.getElementById('quizView').classList.remove('active');
+  document.getElementById('manageView').classList.add('active');
+});
+document.getElementById('backBtn').addEventListener('click',function(){
+  document.getElementById('manageView').classList.remove('active');
+  document.getElementById('quizView').classList.add('active');
+});
+document.getElementById('tabSingle').addEventListener('click',function(){
+  document.getElementById('singleAdd').style.display='block';document.getElementById('bulkAdd').style.display='none';
+  this.classList.add('active');document.getElementById('tabBulk').classList.remove('active');
+});
+document.getElementById('tabBulk').addEventListener('click',function(){
+  document.getElementById('singleAdd').style.display='none';document.getElementById('bulkAdd').style.display='block';
+  this.classList.add('active');document.getElementById('tabSingle').classList.remove('active');
+});
+document.getElementById('addBtn').addEventListener('click',function(){
+  var w=document.getElementById('wordInput').value.trim(),p=document.getElementById('pronInput').value.trim(),e=document.getElementById('exampleInput').value.trim(),m=document.getElementById('meaningInput').value.trim();
+  if(!w||!m)return;
+  localWords.push({word:w,pron:p,example:e,meaning:m});saveLocal();mergeWords();
+  ['wordInput','pronInput','exampleInput','meaningInput'].forEach(function(id){document.getElementById(id).value='';});
+  renderCount();renderList();
+});
+document.getElementById('bulkAddBtn').addEventListener('click',function(){
+  var lines=document.getElementById('bulkInput').value.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+  var added=0,skipped=0;
+  lines.forEach(function(line){
+    var cols=line.split('\t');
+    if(cols.length>=4){var w=cols[0].trim(),p=cols[1].trim(),e=cols[2].trim(),m=cols[3].trim();if(w&&m){localWords.push({word:w,pron:p,example:e,meaning:m});added++;}else skipped++;}
+    else if(cols.length===2){var w2=cols[0].trim(),m2=cols[1].trim();if(w2&&m2){localWords.push({word:w2,pron:'',example:'',meaning:m2});added++;}else skipped++;}
+    else skipped++;
+  });
+  saveLocal();mergeWords();document.getElementById('bulkInput').value='';
+  renderCount();renderList();
+  document.getElementById('bulkResult').textContent=added+'개 추가됨'+(skipped>0?', '+skipped+'개 건너뜀':'');
+});
+
+init();
+</script>
+</body>
+</html>
